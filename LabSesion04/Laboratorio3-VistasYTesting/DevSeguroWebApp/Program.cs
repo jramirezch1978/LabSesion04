@@ -23,7 +23,21 @@ builder.Services.AddSession(options =>
 
 // Configurar Microsoft Identity Web (nueva forma en .NET 9)
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        builder.Configuration.GetSection("AzureAd").Bind(options);
+        // Configurar para preservar tokens
+        options.SaveTokens = true;
+        options.UseTokenLifetime = true;
+        options.Events = new OpenIdConnectEvents
+        {
+            OnTokenValidated = context =>
+            {
+                // Asegurar que los tokens se guarden
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 // Configurar autorización
 builder.Services.AddAuthorization(options =>

@@ -80,21 +80,44 @@ namespace DevSeguroWebApp.Controllers
 
         [HttpGet]
         [Authorize]
-        public IActionResult GetFullIdToken()
+        public async Task<IActionResult> GetFullIdToken()
         {
             try
             {
-                // Intentar obtener el token desde el contexto
-                var accessToken = HttpContext.GetTokenAsync("access_token").Result;
-                var idToken = HttpContext.GetTokenAsync("id_token").Result;
+                // Intentar obtener los tokens usando múltiples métodos
+                var accessToken = await HttpContext.GetTokenAsync("access_token");
+                var idToken = await HttpContext.GetTokenAsync("id_token");
+                var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
+                
+                // Si no están disponibles, intentar obtenerlos de las propiedades de autenticación
+                if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(idToken))
+                {
+                    var authResult = await HttpContext.AuthenticateAsync();
+                    if (authResult?.Properties?.Items != null)
+                    {
+                        authResult.Properties.Items.TryGetValue(".Token.access_token", out accessToken);
+                        authResult.Properties.Items.TryGetValue(".Token.id_token", out idToken);
+                        authResult.Properties.Items.TryGetValue(".Token.refresh_token", out refreshToken);
+                    }
+                }
                 
                 var tokenData = new
                 {
                     AccessToken = accessToken,
                     IdToken = idToken,
+                    RefreshToken = refreshToken,
                     HasAccessToken = !string.IsNullOrEmpty(accessToken),
                     HasIdToken = !string.IsNullOrEmpty(idToken),
-                    TokenInfo = "Los tokens están disponibles en el contexto de autenticación"
+                    HasRefreshToken = !string.IsNullOrEmpty(refreshToken),
+                    TokenInfo = "Tokens obtenidos del contexto de autenticación",
+                    AuthenticationScheme = HttpContext.User.Identity?.AuthenticationType,
+                    IsAuthenticated = HttpContext.User.Identity?.IsAuthenticated ?? false,
+                    Debug = new
+                    {
+                        AvailableTokens = HttpContext.User.Claims.Select(c => c.Type).ToList(),
+                        ClaimsCount = HttpContext.User.Claims.Count(),
+                        AuthProperties = HttpContext.User.Identity?.AuthenticationType
+                    }
                 };
 
                 return Json(tokenData);
@@ -104,7 +127,8 @@ namespace DevSeguroWebApp.Controllers
                 return Json(new { 
                     Error = "Error al obtener tokens", 
                     Details = ex.Message,
-                    Note = "Los tokens pueden no estar disponibles dependiendo de la configuración"
+                    Note = "Los tokens pueden no estar disponibles dependiendo de la configuración",
+                    StackTrace = ex.StackTrace
                 });
             }
         }
@@ -143,11 +167,16 @@ namespace DevSeguroWebApp.Controllers
                 TotalClaims = User.Claims.Count(),
                 ClaimsByType = User.Claims.GroupBy(c => c.Type).Select(g => new { Type = g.Key, Count = g.Count() }),
                 UniqueClaims = User.Claims.Select(c => c.Type).Distinct().Count(),
-                SecurityClaims = User.Claims.Where(c => c.Type.Contains("security") || c.Type.Contains("auth")).ToList(),
-                PersonalClaims = User.Claims.Where(c => c.Type.Contains("name") || c.Type.Contains("email") || c.Type.Contains("given") || c.Type.Contains("family")).ToList(),
-                RoleClaims = User.Claims.Where(c => c.Type.Contains("role") || c.Type.Contains("group")).ToList(),
-                AzureAdClaims = User.Claims.Where(c => c.Type.StartsWith("http://schemas.microsoft.com/") || c.Type.StartsWith("http://schemas.xmlsoap.org/")).ToList(),
-                CustomClaims = User.Claims.Where(c => !c.Type.StartsWith("http://")).ToList()
+                SecurityClaims = User.Claims.Where(c => c.Type.Contains("security") || c.Type.Contains("auth"))
+                    .Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                PersonalClaims = User.Claims.Where(c => c.Type.Contains("name") || c.Type.Contains("email") || c.Type.Contains("given") || c.Type.Contains("family"))
+                    .Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                RoleClaims = User.Claims.Where(c => c.Type.Contains("role") || c.Type.Contains("group"))
+                    .Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                AzureAdClaims = User.Claims.Where(c => c.Type.StartsWith("http://schemas.microsoft.com/") || c.Type.StartsWith("http://schemas.xmlsoap.org/"))
+                    .Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                CustomClaims = User.Claims.Where(c => !c.Type.StartsWith("http://"))
+                    .Select(c => new { Type = c.Type, Value = c.Value }).ToList()
             };
 
             return View(claimsAnalysis);
