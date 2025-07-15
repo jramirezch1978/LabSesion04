@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace DevSeguroWebApp.Controllers
 {
@@ -84,22 +85,10 @@ namespace DevSeguroWebApp.Controllers
         {
             try
             {
-                // Intentar obtener los tokens usando múltiples métodos
+                // Obtener tokens reales según especificación del documento
                 var accessToken = await HttpContext.GetTokenAsync("access_token");
                 var idToken = await HttpContext.GetTokenAsync("id_token");
                 var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
-                
-                // Si no están disponibles, intentar obtenerlos de las propiedades de autenticación
-                if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(idToken))
-                {
-                    var authResult = await HttpContext.AuthenticateAsync();
-                    if (authResult?.Properties?.Items != null)
-                    {
-                        authResult.Properties.Items.TryGetValue(".Token.access_token", out accessToken);
-                        authResult.Properties.Items.TryGetValue(".Token.id_token", out idToken);
-                        authResult.Properties.Items.TryGetValue(".Token.refresh_token", out refreshToken);
-                    }
-                }
                 
                 var tokenData = new
                 {
@@ -109,14 +98,21 @@ namespace DevSeguroWebApp.Controllers
                     HasAccessToken = !string.IsNullOrEmpty(accessToken),
                     HasIdToken = !string.IsNullOrEmpty(idToken),
                     HasRefreshToken = !string.IsNullOrEmpty(refreshToken),
-                    TokenInfo = "Tokens obtenidos del contexto de autenticación",
+                    TokenInfo = "Tokens JWT reales obtenidos según especificación del laboratorio",
                     AuthenticationScheme = HttpContext.User.Identity?.AuthenticationType,
                     IsAuthenticated = HttpContext.User.Identity?.IsAuthenticated ?? false,
-                    Debug = new
+                    User = new
                     {
-                        AvailableTokens = HttpContext.User.Claims.Select(c => c.Type).ToList(),
-                        ClaimsCount = HttpContext.User.Claims.Count(),
-                        AuthProperties = HttpContext.User.Identity?.AuthenticationType
+                        Name = HttpContext.User.Identity?.Name,
+                        Claims = HttpContext.User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                        IsAuthenticated = HttpContext.User.Identity?.IsAuthenticated ?? false,
+                        AuthenticationType = HttpContext.User.Identity?.AuthenticationType
+                    },
+                    Tokens = new
+                    {
+                        AccessTokenPresent = !string.IsNullOrEmpty(accessToken),
+                        IdTokenPresent = !string.IsNullOrEmpty(idToken),
+                        RefreshTokenPresent = !string.IsNullOrEmpty(refreshToken)
                     }
                 };
 
@@ -127,7 +123,7 @@ namespace DevSeguroWebApp.Controllers
                 return Json(new { 
                     Error = "Error al obtener tokens", 
                     Details = ex.Message,
-                    Note = "Los tokens pueden no estar disponibles dependiendo de la configuración",
+                    Note = "Verificar configuración de Microsoft.Identity.Web",
                     StackTrace = ex.StackTrace
                 });
             }

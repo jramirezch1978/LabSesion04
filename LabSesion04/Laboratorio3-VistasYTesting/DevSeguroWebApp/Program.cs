@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,14 +28,40 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(options =>
     {
         builder.Configuration.GetSection("AzureAd").Bind(options);
-        // Configurar para preservar tokens
+        // Configurar para preservar tokens REALES según documento del laboratorio
         options.SaveTokens = true;
         options.UseTokenLifetime = true;
+        options.GetClaimsFromUserInfoEndpoint = true;
+        options.ResponseType = OpenIdConnectResponseType.Code;
+        options.UsePkce = true;
+        
         options.Events = new OpenIdConnectEvents
         {
+            OnTokenResponseReceived = context =>
+            {
+                // Capturar tokens cuando llegan del endpoint
+                var accessToken = context.TokenEndpointResponse.AccessToken;
+                var idToken = context.TokenEndpointResponse.IdToken;
+                var refreshToken = context.TokenEndpointResponse.RefreshToken;
+                
+                // Crear lista de tokens para almacenar
+                var tokens = new List<AuthenticationToken>();
+                
+                if (!string.IsNullOrEmpty(accessToken))
+                    tokens.Add(new AuthenticationToken { Name = "access_token", Value = accessToken });
+                if (!string.IsNullOrEmpty(idToken))
+                    tokens.Add(new AuthenticationToken { Name = "id_token", Value = idToken });
+                if (!string.IsNullOrEmpty(refreshToken))
+                    tokens.Add(new AuthenticationToken { Name = "refresh_token", Value = refreshToken });
+                
+                // Almacenar tokens en las propiedades
+                context.Properties.StoreTokens(tokens);
+                
+                return Task.CompletedTask;
+            },
             OnTokenValidated = context =>
             {
-                // Asegurar que los tokens se guarden
+                // Los tokens ya están guardados en OnTokenResponseReceived
                 return Task.CompletedTask;
             }
         };
