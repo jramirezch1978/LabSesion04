@@ -8,10 +8,10 @@ using System.Security.Claims;
 
 namespace DevSeguroWebApp.Controllers
 {
-    [AllowAnonymous]
     public class AccountController : Controller
     {
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult SignIn()
         {
             var redirectUrl = Url.Action(nameof(HomeController.Index), "Home");
@@ -21,6 +21,7 @@ namespace DevSeguroWebApp.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public IActionResult SignOut()
         {
             return SignOut(

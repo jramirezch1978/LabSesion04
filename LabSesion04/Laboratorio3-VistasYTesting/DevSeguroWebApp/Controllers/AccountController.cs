@@ -8,10 +8,10 @@ using System.Security.Claims;
 
 namespace DevSeguroWebApp.Controllers
 {
-    [AllowAnonymous]
     public class AccountController : Controller
     {
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult SignIn()
         {
             var redirectUrl = Url.Action(nameof(HomeController.Index), "Home");
@@ -21,6 +21,7 @@ namespace DevSeguroWebApp.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public IActionResult SignOut()
         {
             return SignOut(
@@ -81,8 +82,8 @@ namespace DevSeguroWebApp.Controllers
                     AccessTokenPresent = !string.IsNullOrEmpty(accessToken),
                     IdTokenPresent = !string.IsNullOrEmpty(idToken),
                     RefreshTokenPresent = !string.IsNullOrEmpty(refreshToken),
-                    AccessTokenPreview = accessToken?.Substring(0, Math.Min(50, accessToken.Length ?? 0)) + "...",
-                    IdTokenPreview = idToken?.Substring(0, Math.Min(50, idToken.Length ?? 0)) + "..."
+                    AccessTokenPreview = accessToken?.Substring(0, Math.Min(50, accessToken.Length)) + "...",
+                    IdTokenPreview = idToken?.Substring(0, Math.Min(50, idToken.Length)) + "..."
                 }
             };
 
