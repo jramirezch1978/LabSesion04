@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
@@ -30,6 +31,56 @@ builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
         options.SaveTokens = true; // HABILITAR ACCESO A TOKENS JWT
         options.ResponseType = OpenIdConnectResponseType.Code;
         options.UsePkce = true;
+        
+        // CRÍTICO PARA REFRESH TOKEN: Agregar scope offline_access explícitamente
+        options.Scope.Clear();
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+        options.Scope.Add("offline_access"); // ESTE ES CRÍTICO PARA REFRESH TOKEN
+        
+        // Forzar consent para obtener refresh token
+        options.Prompt = "consent";
+        
+        // Configuración específica para capturar tokens
+        options.Events = new OpenIdConnectEvents
+        {
+            OnTokenResponseReceived = context =>
+            {
+                // Forzar que los tokens se almacenen en las propiedades de autenticación
+                var tokens = new List<Microsoft.AspNetCore.Authentication.AuthenticationToken>();
+                
+                if (!string.IsNullOrEmpty(context.TokenEndpointResponse?.AccessToken))
+                {
+                    tokens.Add(new Microsoft.AspNetCore.Authentication.AuthenticationToken
+                    {
+                        Name = "access_token",
+                        Value = context.TokenEndpointResponse.AccessToken
+                    });
+                }
+                
+                if (!string.IsNullOrEmpty(context.TokenEndpointResponse?.IdToken))
+                {
+                    tokens.Add(new Microsoft.AspNetCore.Authentication.AuthenticationToken
+                    {
+                        Name = "id_token", 
+                        Value = context.TokenEndpointResponse.IdToken
+                    });
+                }
+                
+                if (!string.IsNullOrEmpty(context.TokenEndpointResponse?.RefreshToken))
+                {
+                    tokens.Add(new Microsoft.AspNetCore.Authentication.AuthenticationToken
+                    {
+                        Name = "refresh_token",
+                        Value = context.TokenEndpointResponse.RefreshToken
+                    });
+                }
+                
+                context.Properties.StoreTokens(tokens);
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Configurar autorización

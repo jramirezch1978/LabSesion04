@@ -107,30 +107,42 @@ namespace DevSeguroWebApp.Controllers
         {
             try
             {
-                // Intentar obtener el token desde el contexto
                 var accessToken = await HttpContext.GetTokenAsync("access_token");
                 var idToken = await HttpContext.GetTokenAsync("id_token");
                 var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
                 
-                var tokenData = new
+                return Json(new
                 {
-                    AccessToken = accessToken,
-                    IdToken = idToken,
-                    RefreshToken = refreshToken,
-                    HasAccessToken = !string.IsNullOrEmpty(accessToken),
-                    HasIdToken = !string.IsNullOrEmpty(idToken),
-                    HasRefreshToken = !string.IsNullOrEmpty(refreshToken),
-                    TokenInfo = "Los tokens están disponibles en el contexto de autenticación"
-                };
-
-                return Json(tokenData);
+                    accessToken = accessToken,
+                    idToken = idToken,
+                    refreshToken = refreshToken,
+                    hasAccessToken = !string.IsNullOrEmpty(accessToken),
+                    hasIdToken = !string.IsNullOrEmpty(idToken),
+                    hasRefreshToken = !string.IsNullOrEmpty(refreshToken),
+                    tokenInfo = "Tokens JWT reales obtenidos según especificación del laboratorio",
+                    authenticationScheme = User.Identity?.AuthenticationType,
+                    isAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                    user = new
+                    {
+                        name = User.Identity?.Name,
+                        claims = User.Claims.Select(c => new { type = c.Type, value = c.Value }).ToList(),
+                        isAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                        authenticationType = User.Identity?.AuthenticationType
+                    },
+                    tokens = new
+                    {
+                        accessTokenPresent = !string.IsNullOrEmpty(accessToken),
+                        idTokenPresent = !string.IsNullOrEmpty(idToken),
+                        refreshTokenPresent = !string.IsNullOrEmpty(refreshToken)
+                    }
+                });
             }
             catch (Exception ex)
             {
                 return Json(new { 
-                    Error = "Error al obtener tokens", 
-                    Details = ex.Message,
-                    Note = "Los tokens pueden no estar disponibles dependiendo de la configuración"
+                    error = "Error al obtener tokens", 
+                    details = ex.Message,
+                    note = "Verificar configuración de SaveTokens en Program.cs"
                 });
             }
         }
