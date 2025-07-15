@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,9 +22,15 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Configurar Microsoft Identity Web (nueva forma en .NET 9)
+// Configurar Microsoft Identity Web con tokens guardados
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        builder.Configuration.Bind("AzureAd", options);
+        options.SaveTokens = true; // HABILITAR ACCESO A TOKENS JWT
+        options.ResponseType = OpenIdConnectResponseType.Code;
+        options.UsePkce = true;
+    });
 
 // Configurar autorización
 builder.Services.AddAuthorization(options =>

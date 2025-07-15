@@ -31,7 +31,7 @@
                                 </tr>
                                 <tr>
                                     <td><strong>🕐 Autenticado en:</strong></td>
-                                    <td>@(User.FindFirst("auth_time")?.Value != null ? DateTimeOffset.FromUnixTimeSeconds(long.Parse(User.FindFirst("auth_time").Value)).ToString("dd/MM/yyyy HH:mm:ss") : "No disponible")</td>
+                                    <td>@(User.FindFirst("auth_time")?.Value != null ? DateTimeOffset.FromUnixTimeSeconds(long.Parse(User.FindFirst("auth_time")?.Value ?? "0")).ToString("dd/MM/yyyy HH:mm:ss") : "No disponible")</td>
                                 </tr>
                             </tbody>
                         </table>

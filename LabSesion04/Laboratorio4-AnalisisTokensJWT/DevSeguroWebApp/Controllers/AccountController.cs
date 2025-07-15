@@ -169,11 +169,11 @@ namespace DevSeguroWebApp.Controllers
                 TotalClaims = User.Claims.Count(),
                 ClaimsByType = User.Claims.GroupBy(c => c.Type).Select(g => new { Type = g.Key, Count = g.Count() }),
                 UniqueClaims = User.Claims.Select(c => c.Type).Distinct().Count(),
-                SecurityClaims = User.Claims.Where(c => c.Type.Contains("security") || c.Type.Contains("auth")).ToList(),
-                PersonalClaims = User.Claims.Where(c => c.Type.Contains("name") || c.Type.Contains("email") || c.Type.Contains("given") || c.Type.Contains("family")).ToList(),
-                RoleClaims = User.Claims.Where(c => c.Type.Contains("role") || c.Type.Contains("group")).ToList(),
-                AzureAdClaims = User.Claims.Where(c => c.Type.StartsWith("http://schemas.microsoft.com/") || c.Type.StartsWith("http://schemas.xmlsoap.org/")).ToList(),
-                CustomClaims = User.Claims.Where(c => !c.Type.StartsWith("http://")).ToList()
+                SecurityClaims = User.Claims.Where(c => c.Type.Contains("security") || c.Type.Contains("auth")).Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                PersonalClaims = User.Claims.Where(c => c.Type.Contains("name") || c.Type.Contains("email") || c.Type.Contains("given") || c.Type.Contains("family")).Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                RoleClaims = User.Claims.Where(c => c.Type.Contains("role") || c.Type.Contains("group")).Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                AzureAdClaims = User.Claims.Where(c => c.Type.StartsWith("http://schemas.microsoft.com/") || c.Type.StartsWith("http://schemas.xmlsoap.org/")).Select(c => new { Type = c.Type, Value = c.Value }).ToList(),
+                CustomClaims = User.Claims.Where(c => !c.Type.StartsWith("http://")).Select(c => new { Type = c.Type, Value = c.Value }).ToList()
             };
 
             return View(claimsAnalysis);
