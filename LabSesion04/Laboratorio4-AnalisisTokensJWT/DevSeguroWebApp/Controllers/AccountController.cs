@@ -54,46 +54,72 @@ namespace DevSeguroWebApp.Controllers
         [Authorize]
         public IActionResult TokenInfo()
         {
-            // Obtener información del token del contexto del usuario
-            var tokenInfo = new
-            {
-                IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
-                AuthenticationType = User.Identity?.AuthenticationType,
-                Name = User.Identity?.Name,
-                Claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList(),
-                Issuer = User.FindFirst("iss")?.Value,
-                Audience = User.FindFirst("aud")?.Value,
-                Subject = User.FindFirst("sub")?.Value,
-                ExpiresAt = User.FindFirst("exp")?.Value,
-                IssuedAt = User.FindFirst("iat")?.Value,
-                NotBefore = User.FindFirst("nbf")?.Value,
-                AuthTime = User.FindFirst("auth_time")?.Value,
-                TokenUse = User.FindFirst("token_use")?.Value,
-                ClientId = User.FindFirst("client_id")?.Value,
-                Scope = User.FindFirst("scp")?.Value,
-                TenantId = User.FindFirst("tid")?.Value,
-                Version = User.FindFirst("ver")?.Value
-            };
-
-            return View(tokenInfo);
+            // Para la vista principal que cargará la información via JavaScript
+            return View();
         }
 
         [HttpGet]
         [Authorize]
-        public IActionResult GetFullIdToken()
+        public async Task<IActionResult> GetTokenInfo()
+        {
+            try
+            {
+                // Obtener información del usuario
+                var userInfo = new
+                {
+                    Name = User.Identity?.Name,
+                    IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
+                    AuthenticationType = User.Identity?.AuthenticationType,
+                    Claims = User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList()
+                };
+
+                // Intentar obtener tokens desde el contexto
+                var accessToken = await HttpContext.GetTokenAsync("access_token");
+                var idToken = await HttpContext.GetTokenAsync("id_token");
+                var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
+
+                var tokenInfo = new
+                {
+                    AccessTokenPresent = !string.IsNullOrEmpty(accessToken),
+                    IdTokenPresent = !string.IsNullOrEmpty(idToken),
+                    RefreshTokenPresent = !string.IsNullOrEmpty(refreshToken)
+                };
+
+                return Json(new
+                {
+                    User = userInfo,
+                    Tokens = tokenInfo
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new 
+                { 
+                    Error = "Error al obtener información de tokens", 
+                    Details = ex.Message 
+                });
+            }
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetFullIdToken()
         {
             try
             {
                 // Intentar obtener el token desde el contexto
-                var accessToken = HttpContext.GetTokenAsync("access_token").Result;
-                var idToken = HttpContext.GetTokenAsync("id_token").Result;
+                var accessToken = await HttpContext.GetTokenAsync("access_token");
+                var idToken = await HttpContext.GetTokenAsync("id_token");
+                var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
                 
                 var tokenData = new
                 {
                     AccessToken = accessToken,
                     IdToken = idToken,
+                    RefreshToken = refreshToken,
                     HasAccessToken = !string.IsNullOrEmpty(accessToken),
                     HasIdToken = !string.IsNullOrEmpty(idToken),
+                    HasRefreshToken = !string.IsNullOrEmpty(refreshToken),
                     TokenInfo = "Los tokens están disponibles en el contexto de autenticación"
                 };
 

@@ -13,6 +13,14 @@ if (builder.Environment.IsDevelopment())
 // Configurar servicios
 builder.Services.AddControllersWithViews();
 
+// Configurar sesiones (necesario para el testing)
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 // Configurar Microsoft Identity Web (nueva forma en .NET 9)
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
@@ -41,6 +49,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// Configurar sesiones (debe ir después de UseRouting y antes de UseAuthentication)
+app.UseSession();
 
 // ⚠️ ORDEN CRÍTICO en .NET 9
 app.UseAuthentication();

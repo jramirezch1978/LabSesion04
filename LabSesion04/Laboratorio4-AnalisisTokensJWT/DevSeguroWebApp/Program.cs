@@ -1,29 +1,68 @@
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Logging;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Habilitar logging detallado de Identity Model (solo en desarrollo)
+if (builder.Environment.IsDevelopment())
+{
+    IdentityModelEventSource.ShowPII = true;
+}
+
+// Configurar servicios
 builder.Services.AddControllersWithViews();
+
+// Configurar sesiones (necesario para el testing)
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+// Configurar Microsoft Identity Web (nueva forma en .NET 9)
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+
+// Configurar autorización
+builder.Services.AddAuthorization(options =>
+{
+    // Política por defecto: usuario debe estar autenticado
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+
+// Configurar Razor Pages (necesario para Microsoft.Identity.Web)
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configurar pipeline de la aplicación
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    // HSTS por defecto en .NET 9
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+
 app.UseRouting();
 
+// Configurar sesiones (debe ir después de UseRouting y antes de UseAuthentication)
+app.UseSession();
+
+// ⚠️ ORDEN CRÍTICO en .NET 9
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapStaticAssets();
-
+// Configurar rutas
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
+// Mapear Razor Pages (requerido por Microsoft.Identity.Web)
+app.MapRazorPages();
 
 app.Run();
